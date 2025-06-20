@@ -67,30 +67,33 @@ try:
     log_entry = ""
 
     # Step 1: 尝试点击 “get this app back up”
+    found_get_back = False
     try:
         back_up_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'get this app back up')]"))
+            EC.presence_of_element_located((By.XPATH, "//button[contains(., 'get this app back up')]"))
         )
         driver.execute_script("arguments[0].click();", back_up_btn)
         print("已点击 'get this app back up'，等待 30 秒...")
         time.sleep(30)
+        found_get_back = True
         log_entry += f"[{timestamp}] 点击了 'get this app back up' 按钮\n"
     except:
-        print("未检测到 'get this app back up' 按钮，进入下一步。")
-        log_entry += f"[{timestamp}] 未检测到 'get this app back up'\n"
+        print("未检测到 'get this app back up' 按钮，跳过 '启动部署'。")
+        log_entry += f"[{timestamp}] 未检测到 'get this app back up'，不尝试启动部署\n"
 
-    # Step 2: 点击 “启动部署”
-    try:
-        deploy_btn = WebDriverWait(driver, 15).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[contains(., '启动部署')]"))
-        )
-        driver.execute_script("arguments[0].click();", deploy_btn)
-        print("已点击 '启动部署' 按钮。")
-        log_entry += f"[{timestamp}] 成功点击 '启动部署'\n"
-    except Exception as e:
-        print("未检测到 '启动部署' 按钮或点击失败。")
-        log_entry += f"[{timestamp}] 未检测到 '启动部署' 或点击失败：{str(e)}\n"
-        driver.save_screenshot("debug.png")
+    # Step 2: 如果成功点击了 get this app back up，再尝试点击 “启动部署”
+    if found_get_back:
+        try:
+            deploy_btn = WebDriverWait(driver, 15).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[contains(., '启动部署')]"))
+            )
+            driver.execute_script("arguments[0].click();", deploy_btn)
+            print("已点击 '启动部署' 按钮。")
+            log_entry += f"[{timestamp}] 成功点击 '启动部署'\n"
+        except Exception as e:
+            print("未检测到 '启动部署' 按钮或点击失败。")
+            log_entry += f"[{timestamp}] 未检测到 '启动部署' 或点击失败：{str(e)}\n"
+            driver.save_screenshot("debug.png")
 
     # 写入日志
     with open(log_file, "a", encoding="utf-8") as f:
