@@ -2,7 +2,7 @@ name: Auto Click App
 
 on:
   schedule:
-    - cron: '0 */12 * * *'  # 每小时运行一次
+    - cron: '0 */2 * * *'  # 每小时运行一次
   workflow_dispatch:
 
 jobs:
