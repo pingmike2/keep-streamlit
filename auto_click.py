@@ -7,21 +7,19 @@ from datetime import datetime, timedelta
 import time
 import os
 
-# ========== 设置无头浏览器参数 ==========
+# ========== 配置无头浏览器 ==========
 options = Options()
 options.add_argument('--headless')
 options.add_argument('--no-sandbox')
 options.add_argument('--disable-dev-shm-usage')
-options.add_argument('--disable-gpu')
-options.add_argument('--disable-software-rasterizer')
 
-# ========== 创建 Chrome 驱动 ==========
+# ========== 创建 Chrome 实例 ==========
 service = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=service, options=options)
 
 # ========== 日志配置 ==========
 log_file = "click_log.txt"
-log_retention_days = 2  # 日志保留天数
+log_retention_days = 2
 
 def clean_old_logs():
     if not os.path.exists(log_file):
@@ -29,63 +27,81 @@ def clean_old_logs():
     try:
         with open(log_file, "r", encoding="utf-8") as f:
             lines = f.readlines()
-        cleaned_lines = []
+        cleaned = []
         cutoff = datetime.now() - timedelta(days=log_retention_days)
         for line in lines:
             if line.startswith("["):
                 try:
                     ts = datetime.strptime(line.split("]")[0][1:], "%Y-%m-%d %H:%M:%S")
                     if ts >= cutoff:
-                        cleaned_lines.append(line)
+                        cleaned.append(line)
                 except:
-                    cleaned_lines.append(line)
+                    cleaned.append(line)
             else:
-                cleaned_lines.append(line)
+                cleaned.append(line)
         with open(log_file, "w", encoding="utf-8") as f:
-            f.writelines(cleaned_lines)
+            f.writelines(cleaned)
     except Exception as e:
         print(f"日志清理失败：{e}")
 
-# ========== 执行日志清理 ==========
+# ========== 执行清理 ==========
 clean_old_logs()
 
-# ========== 主逻辑 ==========
 try:
-    driver.get("https://app-kfnreuvbhmi6ksaeksknf9.streamlit.app")
+    url = "https://onlyno999.streamlit.app/"
+    driver.get(url)
     print("✅ 页面已打开，等待加载 30 秒...")
     time.sleep(30)
 
-    # ==== 进入 iframe（抱脸平台常用结构）====
+    # ==== 进入 iframe（如果有）====
     iframes = driver.find_elements(By.TAG_NAME, "iframe")
     if iframes:
-        print(f"🌐 检测到 {len(iframes)} 个 iframe，进入第一个")
+        print(f"🌐 检测到 {len(iframes)} 个 iframe，切入第一个")
         driver.switch_to.frame(iframes[0])
-        time.sleep(3)
-
-    # ==== 查找包含 Yes 的按钮（更精准）====
-    buttons = driver.find_elements(By.XPATH, "//button[contains(normalize-space(.), 'get this app back up')]")
+        time.sleep(2)
 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    if buttons:
-        driver.execute_script("arguments[0].click();", buttons[0])
-        print("✅ 检测到按钮，已点击，等待 45 秒恢复操作...")
-        time.sleep(45)
-        log_entry = f"[{timestamp}] ✅ 按钮已点击，已等待45秒完成\n"
-    else:
-        print("❌ 未检测到按钮，跳过点击")
-        driver.save_screenshot("no_button_found.png")
-        log_entry = f"[{timestamp}] ❌ 未发现按钮，未执行点击\n"
+    log_entry = ""
 
+    # ==== Step 1: 检查并点击 "get this app back up" ====
+    found_back_up = False
+    buttons = driver.find_elements(By.TAG_NAME, "button")
+    for btn in buttons:
+        if "get this app back up" in btn.text.lower():
+            btn.click()
+            found_back_up = True
+            print("✅ 点击了 'get this app back up' 按钮，等待 45 秒...")
+            log_entry += f"[{timestamp}] 点击 'get this app back up' 按钮\n"
+            time.sleep(45)
+            break
+
+    # ==== Step 2: 只有点击了 back up 按钮才去点 “启动部署” ====
+    if found_back_up:
+        deploy_buttons = driver.find_elements(By.TAG_NAME, "button")
+        deploy_clicked = False
+        for btn in deploy_buttons:
+            if "启动部署" in btn.text:
+                btn.click()
+                print("✅ 点击了 '启动部署'")
+                log_entry += f"[{timestamp}] 点击 '启动部署' 按钮\n"
+                deploy_clicked = True
+                break
+        if not deploy_clicked:
+            print("⚠️ 未找到 '启动部署' 按钮")
+            log_entry += f"[{timestamp}] 未找到 '启动部署' 按钮\n"
+    else:
+        print("❌ 未检测到 'get this app back up'，不执行启动部署")
+        log_entry += f"[{timestamp}] 未检测到 'get this app back up'，未执行任何操作\n"
+
+    # 写入日志
     with open(log_file, "a", encoding="utf-8") as f:
         f.write(log_entry)
 
 except Exception as e:
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    error_msg = f"[{timestamp}] ❌ 脚本异常：{str(e)}\n"
-    print(error_msg)
+    print(f"💥 发生错误：{e}")
     with open(log_file, "a", encoding="utf-8") as f:
-        f.write(error_msg)
-    driver.save_screenshot("fatal_error.png")
+        f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 脚本异常：{str(e)}\n")
+    driver.save_screenshot("error.png")
 
 finally:
     driver.quit()
