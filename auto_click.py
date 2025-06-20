@@ -7,82 +7,81 @@ from datetime import datetime, timedelta
 import time
 import os
 
-# ✅ 设置无头浏览器参数
+# 设置无头浏览器参数
 options = Options()
 options.add_argument('--headless')
 options.add_argument('--no-sandbox')
 options.add_argument('--disable-dev-shm-usage')
 
+# 创建 Chrome 驱动
 service = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=service, options=options)
 
+# 日志配置
 log_file = "click_log.txt"
-log_retention_days = 2
+log_retention_days = 2  # 日志保留天数
 
-# ✅ 清理旧日志
+# 清理旧日志函数
 def clean_old_logs():
     if not os.path.exists(log_file):
         return
+
     try:
         with open(log_file, "r", encoding="utf-8") as f:
             lines = f.readlines()
+
+        cleaned_lines = []
         cutoff = datetime.now() - timedelta(days=log_retention_days)
-        cleaned = []
+
         for line in lines:
             if line.startswith("["):
                 try:
-                    t = line.split("]")[0][1:]
-                    if datetime.strptime(t, "%Y-%m-%d %H:%M:%S") >= cutoff:
-                        cleaned.append(line)
+                    timestamp_str = line.split("]")[0][1:]
+                    timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+                    if timestamp >= cutoff:
+                        cleaned_lines.append(line)
                 except:
-                    cleaned.append(line)
+                    cleaned_lines.append(line)  # 非时间行保留
             else:
-                cleaned.append(line)
-        with open(log_file, "w", encoding="utf-8") as f:
-            f.writelines(cleaned)
-    except Exception as e:
-        print(f"日志清理失败: {e}")
+                cleaned_lines.append(line)
 
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.writelines(cleaned_lines)
+
+    except Exception as e:
+        print(f"日志清理失败：{e}")
+
+# 执行清理
 clean_old_logs()
 
-# ✅ 主逻辑
+# 主逻辑开始
 try:
-    url = "https://app-kfnreuvbhmi6ksaeksknf9.streamlit.app"
-    driver.get(url)
-    print("✅ 页面已打开，等待加载 30 秒...")
-    time.sleep(30)
+    driver.get("https://app-kfnreuvbhmi6ksaeksknf9.streamlit.app")
+    print("已打开网页，等待页面加载 30 秒...")
+    time.sleep(30)  # 初次加载等待
 
-    # 🔍 检查 iframe
-    iframes = driver.find_elements(By.TAG_NAME, "iframe")
-    if iframes:
-        print("🌐 检测到 iframe，切入第一个")
-        driver.switch_to.frame(iframes[0])
-
+    # 查找按钮
+    buttons = driver.find_elements(By.XPATH, "//button[contains(text(), 'get this app back up')]")
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_entry = f"[{timestamp}] 打开页面 {url}\n"
-
-    # ✅ 检测按钮（兼容大小写、空格）
-    buttons = driver.find_elements(By.XPATH,
-        "//button[contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'get this app back up')]")
 
     if buttons:
-        print("🟢 检测到按钮，点击中...")
         buttons[0].click()
-        time.sleep(45)
-        log_entry += f"[{timestamp}] 成功点击 get this app back up 并等待 45 秒\n"
+        print("检测到按钮，已点击。等待 45 秒完成恢复操作...")
+        time.sleep(45)  # 点击后等待
+        log_entry = f"[{timestamp}] 按钮已点击，已等待45秒完成\n"
     else:
-        print("❌ 未检测到按钮，跳过点击")
-        log_entry += f"[{timestamp}] 未检测到按钮，未执行点击\n"
+        print("未检测到按钮，跳过点击。")
+        log_entry = f"[{timestamp}] 未发现按钮，未执行点击\n"
 
     with open(log_file, "a", encoding="utf-8") as f:
         f.write(log_entry)
 
 except Exception as e:
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"❗️发生错误：{e}")
+    error_msg = f"[{timestamp}] 错误：{str(e)}\n"
+    print(f"发生错误：{e}")
     with open(log_file, "a", encoding="utf-8") as f:
-        f.write(f"[{timestamp}] 脚本异常：{str(e)}\n")
-    driver.save_screenshot("debug.png")
+        f.write(error_msg)
 
 finally:
     driver.quit()
