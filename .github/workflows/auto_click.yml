@@ -1,0 +1,50 @@
+name: Auto Click Streamlit
+
+on:
+  schedule:
+    - cron: '0 */12 * * *'     # 每 12 小时自动运行
+  workflow_dispatch:           # 支持手动运行
+
+jobs:
+  clicker:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        persist-credentials: false  # 使用自定义 token 方式推送
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        pip install selenium webdriver-manager
+
+    - name: Run auto click script
+      run: python auto_click.py
+
+    - name: Commit log file to repo
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+        # 如果日志文件不存在，说明是第一次运行，先创建
+        if [ ! -f click_log.txt ]; then
+          echo "初始化日志文件于 $(date +'%Y-%m-%d %H:%M:%S')" > click_log.txt
+        fi
+
+        git add click_log.txt
+
+        # 提交并推送（如果有变更）
+        if git diff --cached --quiet; then
+          echo "无变化，无需提交"
+        else
+          git commit -m "更新日志: $(date +'%Y-%m-%d %H:%M:%S')"
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:main
+        fi
