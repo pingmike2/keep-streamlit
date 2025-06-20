@@ -59,37 +59,50 @@ clean_old_logs()
 try:
     driver.get("https://app-kfnreuvbhmi6ksaeksknf9.streamlit.app/")
     print("已打开网页，等待页面加载 30 秒...")
-    time.sleep(30)  # 初次加载等待
+    time.sleep(30)  # 页面初始加载等待时间
 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # 先找“get this app back up”按钮
+    # 优先查找“get this app back up”按钮
     back_up_buttons = driver.find_elements(By.XPATH, "//button[contains(., 'get this app back up')]")
+
     if back_up_buttons:
         back_up_buttons[0].click()
-        print("检测到 'get this app back up' 按钮，已点击。等待 30 秒...")
+        print("检测到 'get this app back up' 按钮，已点击，等待 30 秒以完成恢复...")
         time.sleep(30)
 
-        # 点完“get this app back up”后再找“启动部署”按钮
-        deploy_buttons = driver.find_elements(By.XPATH, "//button[contains(., '启动部署')]")
-        if deploy_buttons:
-            deploy_buttons[0].click()
-            print("检测到 '启动部署' 按钮，已点击。")
-            log_entry = f"[{timestamp}] 先点击了 'get this app back up'，等待30秒后点击了 '启动部署'\n"
-        else:
-            print("未检测到 '启动部署' 按钮。")
-            log_entry = f"[{timestamp}] 点击了 'get this app back up'，但未发现 '启动部署' 按钮\n"
-    else:
-        # 如果没找到“get this app back up”，直接点“启动部署”
-        deploy_buttons = driver.find_elements(By.XPATH, "//button[contains(., '启动部署')]")
-        if deploy_buttons:
-            deploy_buttons[0].click()
-            print("未发现 'get this app back up' 按钮，检测到 '启动部署' 按钮，已点击。")
-            log_entry = f"[{timestamp}] 未发现 'get this app back up'，直接点击了 '启动部署'\n"
-        else:
-            print("未检测到任何目标按钮，跳过点击。")
-            log_entry = f"[{timestamp}] 未发现任何目标按钮，未执行点击\n"
+        # 恢复后点击“启动部署”
+        WebDriverWait(driver, 15).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[contains(., '启动部署')]"))
+        )
+        buttons = driver.find_elements(By.XPATH, "//button[contains(., '启动部署')]")
 
+        if buttons:
+            buttons[0].click()
+            print("已点击 '启动部署' 按钮。")
+            log_entry = f"[{timestamp}] 点击了 'get this app back up' 后点击了 '启动部署'\n"
+        else:
+            print("未找到 '启动部署' 按钮。")
+            log_entry = f"[{timestamp}] 点击 'get this app back up' 后未找到 '启动部署'\n"
+
+    else:
+        # 未找到“get this app back up”，直接点击“启动部署”
+        print("未检测到 'get this app back up'，尝试直接点击 '启动部署'...")
+
+        WebDriverWait(driver, 15).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[contains(., '启动部署')]"))
+        )
+        buttons = driver.find_elements(By.XPATH, "//button[contains(., '启动部署')]")
+
+        if buttons:
+            buttons[0].click()
+            print("已直接点击 '启动部署' 按钮。")
+            log_entry = f"[{timestamp}] 未检测到 'get this app back up'，直接点击了 '启动部署'\n"
+        else:
+            print("未检测到任何按钮。")
+            log_entry = f"[{timestamp}] 未检测到任何按钮，未执行点击\n"
+
+    # 写入日志
     with open(log_file, "a", encoding="utf-8") as f:
         f.write(log_entry)
 
