@@ -48,7 +48,7 @@ def clean_old_logs():
 clean_old_logs()
 
 try:
-    url = "https://onlyno999.streamlit.app/"
+    url = "https://app-kfnreuvbhmi6ksaeksknf9.streamlit.app"
     driver.get(url)
     print("✅ 页面已打开，等待加载 30 秒...")
     time.sleep(30)
