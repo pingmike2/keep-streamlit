@@ -57,21 +57,37 @@ clean_old_logs()
 # 主逻辑开始
 try:
     driver.get("https://app-kfnreuvbhmi6ksaeksknf9.streamlit.app")
-    print("已打开网页，等待页面加载 30 秒...")
-    time.sleep(30)  # 初次加载等待
+    print("✅ 页面已打开，等待加载 30 秒...")
+    time.sleep(30)
 
-    # 查找按钮
-    buttons = driver.find_elements(By.XPATH, "//button[contains(text(), 'get this app back up')]")
+    # 检查 iframe 并切入
+    iframes = driver.find_elements(By.TAG_NAME, "iframe")
+    if iframes:
+        print(f"🌐 检测到 {len(iframes)} 个 iframe，切入第一个")
+        driver.switch_to.frame(iframes[0])
+
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    if buttons:
-        buttons[0].click()
-        print("检测到按钮，已点击。等待 45 秒完成恢复操作...")
-        time.sleep(45)  # 点击后等待
-        log_entry = f"[{timestamp}] 按钮已点击，已等待45秒完成\n"
+    # Step 1: 检测并点击 “Yes, get this app back up!”
+    back_btns = driver.find_elements(By.XPATH, "//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'get this app back up')]")
+    if back_btns:
+        print("✅ 检测到 'get this app back up'，开始点击...")
+        back_btns[0].click()
+        time.sleep(45)
+        log_entry = f"[{timestamp}] 已点击 'get this app back up' 并等待 45 秒\n"
+
+        # Step 2: 检查并点击“启动部署”
+        deploy_btns = driver.find_elements(By.XPATH, "//button[contains(text(), '启动部署')]")
+        if deploy_btns:
+            deploy_btns[0].click()
+            print("🚀 已点击 '启动部署' 按钮。")
+            log_entry += f"[{timestamp}] 已点击 '启动部署' 按钮\n"
+        else:
+            print("⚠️ 未找到 '启动部署' 按钮")
+            log_entry += f"[{timestamp}] 未找到 '启动部署' 按钮\n"
     else:
-        print("未检测到按钮，跳过点击。")
-        log_entry = f"[{timestamp}] 未发现按钮，未执行点击\n"
+        print("❌ 未检测到 'get this app back up'，不执行启动部署")
+        log_entry = f"[{timestamp}] 未检测到唤醒按钮，未执行部署操作\n"
 
     with open(log_file, "a", encoding="utf-8") as f:
         f.write(log_entry)
@@ -82,6 +98,7 @@ except Exception as e:
     print(f"发生错误：{e}")
     with open(log_file, "a", encoding="utf-8") as f:
         f.write(error_msg)
+    driver.save_screenshot("debug.png")
 
 finally:
     driver.quit()
