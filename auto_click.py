@@ -6,7 +6,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from datetime import datetime, timedelta
-from selenium.common.exceptions import TimeoutException
 import os
 import time
 
@@ -59,64 +58,50 @@ try:
     time.sleep(30)
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    log_entry = ""
-
-    # Step 0: 检测 iframe（如果存在，切进去）
+    # 检测 iframe（如果存在，切进去）
     iframes = driver.find_elements(By.TAG_NAME, "iframe")
     if len(iframes) > 0:
         print(f"检测到 {len(iframes)} 个 iframe，尝试切入第一个。")
         driver.switch_to.frame(iframes[0])
 
-        # ⏳ 等待 iframe 页面加载完成
-        try:
-            WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.TAG_NAME, "body"))
-            )
-            print("iframe 页面加载完成。")
-        except TimeoutException:
-            print("⚠️ iframe 页面加载超时")
-
-    found_get_back = False
+    log_entry = ""
 
     # Step 1: 尝试点击 “get this app back up”
     try:
-        back_up_btn = WebDriverWait(driver, 15).until(
+        back_up_btn = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'get this app back up')]"))
         )
         driver.execute_script("arguments[0].click();", back_up_btn)
-        print("✅ 已点击 'get this app back up'，等待 30 秒...")
+        print("已点击 'get this app back up'，等待 30 秒...")
         time.sleep(30)
-        found_get_back = True
-        log_entry += f"[{timestamp}] ✅ 点击了 'get this app back up' 按钮\n"
-    except TimeoutException:
-        print("❌ 未检测到 'get this app back up' 按钮")
-        log_entry += f"[{timestamp}] 未检测到 'get this app back up'，跳过启动部署\n"
-        driver.save_screenshot("no_get_back_button.png")
+        log_entry += f"[{timestamp}] 点击了 'get this app back up' 按钮\n"
+    except:
+        print("未检测到 'get this app back up' 按钮，进入下一步。")
+        log_entry += f"[{timestamp}] 未检测到 'get this app back up'\n"
 
-    # Step 2: 如果成功点击了 get back，再点击 “启动部署”
-    if found_get_back:
-        try:
-            deploy_btn = WebDriverWait(driver, 15).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[contains(., '启动部署')]"))
-            )
-            driver.execute_script("arguments[0].click();", deploy_btn)
-            print("✅ 已点击 '启动部署' 按钮。")
-            log_entry += f"[{timestamp}] ✅ 成功点击 '启动部署'\n"
-        except Exception as e:
-            print("❌ 未检测到 '启动部署' 按钮或点击失败。")
-            log_entry += f"[{timestamp}] ❌ 未检测到 '启动部署' 或点击失败：{str(e)}\n"
-            driver.save_screenshot("deploy_failed.png")
+    # Step 2: 点击 “启动部署”
+    try:
+        deploy_btn = WebDriverWait(driver, 15).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[contains(., '启动部署')]"))
+        )
+        driver.execute_script("arguments[0].click();", deploy_btn)
+        print("已点击 '启动部署' 按钮。")
+        log_entry += f"[{timestamp}] 成功点击 '启动部署'\n"
+    except Exception as e:
+        print("未检测到 '启动部署' 按钮或点击失败。")
+        log_entry += f"[{timestamp}] 未检测到 '启动部署' 或点击失败：{str(e)}\n"
+        driver.save_screenshot("debug.png")
 
     # 写入日志
     with open(log_file, "a", encoding="utf-8") as f:
         f.write(log_entry)
 
 except Exception as e:
-    print(f"❌ 发生错误：{e}")
+    print(f"发生错误：{e}")
     with open(log_file, "a", encoding="utf-8") as f:
-        f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ❌ 脚本异常：{str(e)}\n")
+        f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 脚本异常：{str(e)}\n")
     if driver:
-        driver.save_screenshot("fatal_error.png")
+        driver.save_screenshot("debug.png")
 
 finally:
     if driver:
