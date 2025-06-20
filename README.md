@@ -1,2 +1,2 @@
 #自动点击网页，激活项目。
-https://onlyno999.streamlit.app/
+https://app-kfnreuvbhmi6ksaeksknf9.streamlit.app/
